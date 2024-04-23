@@ -1,59 +1,37 @@
-name: build
+name: Build and Run Chimera
 
-# Run manually and each time anything is pushed or a PR is made
-# Will only create a release for tagged commits
 on:
-  workflow_dispatch:
   push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   build:
-    name: "Build Chimera"
     runs-on: windows-latest
 
     steps:
-      - name: "Checkout"
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      
+    - name: Set up MinGW32
+      uses: corretto/setup-mingw@v1
+      with:
+        arch: x86
+        threads: posix
+        exceptions: sjlj
+        addToPath: true
 
-      - name: "Build Lua"
-        if: "!exists('client/lua/lua/bin/liblua.a')"
-        run: |
-          cd client/lua/lua
-          echo Building Lua...
-          del bin /Q
-          mkdir bin
-          for /r %%f in (*.c) do gcc -c %%f -O2 -o bin/%%~nf.o
-          ar rcs liblua.a bin/*
-          move liblua.a bin
-          echo Done building Lua
-          cd ..\..\..
+    - name: Run build.bat
+      shell: cmd
+      run: |
+        cd client\lua\lua
+        call ..\..\..\build.bat
+        cd ..\..\..
 
-      - name: "Build Chimera"
-        run: |
-          if "%1" == "release" (goto RELEASE)
-          :DEBUG
-          SET ARGS=-g
-          SET ARGSFAST=-g
-          SET LARGS=-g
-          goto BUILD
-          :RELEASE
-          SET ARGS=-O2
-          SET ARGSFAST=-Ofast -msse3 -fno-exceptions
-          SET LARGS=-Wl,--exclude-all-symbols -s
-          goto BUILD
-          :BUILD
-          del bin /Q
-          mkdir bin
-          @echo ON
-          windres version.rc -o bin/version.o
-          g++ -c main.cpp %ARGS% -o bin/main.o
-          REM Insert the compilation commands from your script here
-          :END
-          g++ bin/* %LARGS% -L client/lua/lua/bin -llua -shared -lws2_32 -static-libgcc -static-libstdc++ -static -luserenv -static -lpthread -static -ladvapi32 -o "bin/chimera.dll"
-
-      - name: "Upload artifact"
-        uses: actions/upload-artifact@v3
-        with:
-          name: chimera
-          path: ./bin
+    - name: Display build results
+      run: |
+        type client\lua\lua\bin\liblua.a
+        dir bin /s /b
