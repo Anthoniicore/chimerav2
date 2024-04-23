@@ -1,39 +1,59 @@
-name: c-cpp
+name: build
 
+# Run manually and each time anything is pushed or a PR is made
+# Will only create a release for tagged commits
 on:
+  workflow_dispatch:
   push:
-    branches:
-      
-master
-pull_request:
-  branches:
-master
-
-env:
-  # Personaliza el tipo de compilación de CMake aquí (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
+  pull_request:
 
 jobs:
   build:
+    name: "Build Chimera"
     runs-on: windows-latest
 
     steps:
-      
-name: Checkout code
-      uses: actions/checkout@v2
+      - name: "Checkout"
+        uses: actions/checkout@v3
 
-      
-name: Install MinGW32
-      run: |
-        choco install mingw --version=7.3.0 -y
-        echo "PATH=C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin;%PATH%" >> $GITHUB_ENV
+      - name: "Build Lua"
+        if: "!exists('client/lua/lua/bin/liblua.a')"
+        run: |
+          cd client/lua/lua
+          echo Building Lua...
+          del bin /Q
+          mkdir bin
+          for /r %%f in (*.c) do gcc -c %%f -O2 -o bin/%%~nf.o
+          ar rcs liblua.a bin/*
+          move liblua.a bin
+          echo Done building Lua
+          cd ..\..\..
 
-      
-name: Configure CMake
-      run: |
-        cmake D:\a\Chimera\Chimera -B D:\a\Chimera\Chimera/build -G "MinGW Makefiles" -DCMAKE_CXX_STANDARD=20
+      - name: "Build Chimera"
+        run: |
+          if "%1" == "release" (goto RELEASE)
+          :DEBUG
+          SET ARGS=-g
+          SET ARGSFAST=-g
+          SET LARGS=-g
+          goto BUILD
+          :RELEASE
+          SET ARGS=-O2
+          SET ARGSFAST=-Ofast -msse3 -fno-exceptions
+          SET LARGS=-Wl,--exclude-all-symbols -s
+          goto BUILD
+          :BUILD
+          del bin /Q
+          mkdir bin
+          @echo ON
+          windres version.rc -o bin/version.o
+          g++ -c main.cpp %ARGS% -o bin/main.o
+          REM Insert the compilation commands from your script here
+          :END
+          g++ bin/* %LARGS% -L client/lua/lua/bin -llua -shared -lws2_32 -static-libgcc -static-libstdc++ -static -luserenv -static -lpthread -static -ladvapi32 -o "bin/chimera.dll"
 
-      
-name: Build with MinGW32 and run build.bat
-      run: |
-        cmake --build D:\a\Chimera\Chimera/build --config ${{ env.BUILD_TYPE }}D:\a\Chimera\Chimera/build.bat
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@v3
+        with:
+          name: chimera
+          path: ./bin
