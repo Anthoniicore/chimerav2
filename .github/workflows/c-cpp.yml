@@ -1,0 +1,39 @@
+name: CMake on a single platform
+
+on:
+  push:
+    branches:
+      
+master
+pull_request:
+  branches:
+master
+
+env:
+  # Personaliza el tipo de compilación de CMake aquí (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      
+name: Checkout code
+      uses: actions/checkout@v2
+
+      
+name: Install MinGW32
+      run: |
+        choco install mingw --version=7.3.0 -y
+        echo "PATH=C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin;%PATH%" >> $GITHUB_ENV
+
+      
+name: Configure CMake
+      run: |
+        cmake D:\a\Chimera\Chimera -B D:\a\Chimera\Chimera/build -G "MinGW Makefiles" -DCMAKE_CXX_STANDARD=20
+
+      
+name: Build with MinGW32 and run build.bat
+      run: |
+        cmake --build D:\a\Chimera\Chimera/build --config ${{ env.BUILD_TYPE }}D:\a\Chimera\Chimera/build.bat
