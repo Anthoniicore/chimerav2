@@ -34,9 +34,9 @@ static void fix_descoping() noexcept {
 
         set_halo_descoping(object_shield > shield && object_shield > 1.0);
 
-        if(object_health < health || (object_shield < shield && (shield - object_shield) > 0.01)) {
-            if(descope_fix_enabled) do_descope(id);
-        }
+        // if(object_health < health || (object_shield < shield && (shield - object_shield) > 0.01)) {
+        //     if(descope_fix_enabled) do_descope(id);
+        // }
 
         health = object_health;
         shield = object_shield;
